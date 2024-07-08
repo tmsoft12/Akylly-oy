@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      :root {
+        user-select: none;
+      }
+      .checkbox-button {
+        display: inline-block;
+        position: relative;
+        padding: 10px 20px;
+        background-color: #3498db; /* Change this to your desired button color */
+        color: #fff;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+      }
+
+      .checkbox-button input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .checkbox-button:hover {
+        background-color: #2980b9; /* Change this to the button color on hover */
+      }
+
+      .checkbox-button input:checked + span {
+        background-color: #2ecc71; /* Change this to the button color when checked */
+      }
+
+      .checkbox-button span {
+        position: relative;
+        z-index: 1;
+      }
+
+      .checkbox-button:active {
+        transform: translateY(1px);
+      }
+    </style>
+  </head>
+  <body>
+    <label class="checkbox-button">
+      <input type="checkbox" id="1" onclick="handleClick(this)" />
+      Relay1
+    </label>
+    <label class="checkbox-button">
+      <input type="checkbox" id="2" onclick="handleClick(this)" />
+      Relay2
+    </label>
+    <br />
+    <input
+      type="range"
+      id="3"
+      min="0"
+      max="255"
+      value="0"
+      onchange="handleChange(this)"
+    />
+  </body>
+  <script src="./socket.io-2.3.0.js"></script>
+  <script src="./axios.js"></script>
+  <script>
+    let data
+    const fetch = async () => {
+      try {
+        const res = await axios.get('http://127.0.0.1:8000/api/device')
+        data = res.data
+        refresh(data)
+      } catch (err) {
+        console.log(err)
+      }
+    }
+    fetch()
+    const refresh = (data) => {
+      const body = document.body
+      data.map((i) => {
+        switch (i.type) {
+          case 'relay':
+            const element = document.createElement('label')
+            element.className = 'checkbox-button'
+            element.innerText = 'Relay1'
+            element.innerHTML = `
+      <input type="checkbox" id="${i.id}" onclick="handleClick(this)" 
+      ${i.state === 1 ? 'checked' : ''} /> Relay${i.id}`
+            body.append(element)
+            break
+          case 'dimmer':
+            const dimmer = document.createElement('input')
+            dimmer.type = 'range'
+            dimmer.id = i.id
+            dimmer.min = 0
+            dimmer.max = 255
+            dimmer.value = i.state
+            dimmer.addEventListener('onchange', handleChange(dimmer))
+            body.append(dimmer)
+            break
+        }
+      })
+    }
+  </script>
+  <script>
+    const socketEmit = (id, state) => {
+      socket.emit('userSend', { id, state })
+    }
+    const socket = io('http://127.0.0.1:8000?type=user')
+    const handleClick = (btn) => {
+      socketEmit(Number(btn.id), btn.checked ? 1 : 0)
+    }
+    const handleChange = (range) => {
+      socketEmit(Number(range.id), Number(range.value))
+    }
+  </script>
+</html>
